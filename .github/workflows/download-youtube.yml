@@ -18,7 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        # uses: actions/checkout@v4
+        uses: actions/checkout@v5    # or @v6, @v7 – any version ≥5
 
       - name: Install yt-dlp
         run: |
