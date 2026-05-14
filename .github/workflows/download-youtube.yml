@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       quality:
-        description: 'Video quality (e.g., 1080, 720, best, worst)'
+        description: 'Quality (best, 1080, 720, bestaudio)'
         required: true
         default: 'best'
         type: string
@@ -18,24 +18,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        # uses: actions/checkout@v4
-        uses: actions/checkout@v5    # or @v6, @v7 – any version ≥5
+        uses: actions/checkout@v5
 
-      - name: Install yt-dlp
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y python3-pip ffmpeg
-          pip3 install yt-dlp
+          ffmpeg -version
+          pip3 install --upgrade yt-dlp
+          yt-dlp --version
 
-      - name: Download video
+      - name: Validate URL
+        run: |
+          if [[ ! "${{ inputs.url }}" =~ ^https?://(www\.)?(youtube\.com|youtu\.be)/ ]]; then
+            echo "❌ Invalid YouTube URL: ${{ inputs.url }}"
+            exit 1
+          fi
+          echo "✅ URL looks valid"
+
+      - name: Download video (verbose)
         run: |
           mkdir -p downloads
-          yt-dlp -f "${{ inputs.quality }}" -o "downloads/%(title)s.%(ext)s" "${{ inputs.url }}"
+          echo "Downloading with quality: ${{ inputs.quality }}"
+          yt-dlp -v \
+            --sleep-interval 3 \
+            --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+            -f "${{ inputs.quality }}" \
+            -o "downloads/%(title)s.%(ext)s" \
+            "${{ inputs.url }}"
+          
+          if [ $? -ne 0 ]; then
+            echo "⚠️ First attempt failed. Retrying with 'best' quality..."
+            yt-dlp -v \
+              -f "best" \
+              -o "downloads/%(title)s.%(ext)s" \
+              "${{ inputs.url }}"
+          fi
 
-      - name: List downloaded files (debug)
+      - name: List downloaded files
         run: ls -la downloads/
 
-      - name: Upload video as an artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: youtube-video
