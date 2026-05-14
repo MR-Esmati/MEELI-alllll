@@ -1,0 +1,42 @@
+name: Download YouTube Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'YouTube video URL'
+        required: true
+        type: string
+      quality:
+        description: 'Video quality (e.g., 1080, 720, best, worst)'
+        required: true
+        default: 'best'
+        type: string
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install yt-dlp
+        run: |
+          sudo apt update
+          sudo apt install -y python3-pip ffmpeg
+          pip3 install yt-dlp
+
+      - name: Download video
+        run: |
+          mkdir -p downloads
+          yt-dlp -f "${{ inputs.quality }}" -o "downloads/%(title)s.%(ext)s" "${{ inputs.url }}"
+
+      - name: List downloaded files (debug)
+        run: ls -la downloads/
+
+      - name: Upload video as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-video
+          path: downloads/
+          retention-days: 7
